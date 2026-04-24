@@ -55,25 +55,35 @@ const TreeNode = ({ value }: { value: unknown }) => {
 };
 
 const stringifyTree = (tree: Record<string, unknown>) => JSON.stringify(tree, null, 2);
+const endpoint = apiBaseUrl ? `${apiBaseUrl}/bfhl` : "/bfhl";
 
 export default function App() {
   const [rawInput, setRawInput] = useState(DEFAULT_INPUT);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "failed">("idle");
   const [response, setResponse] = useState<ApiResponse | null>(null);
   const parsedEntries = useMemo(() => parseEntries(rawInput), [rawInput]);
+  const hasEndpoint = apiBaseUrl.length > 0;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
     setResponse(null);
+    setStatus("idle");
+    if (!hasEndpoint) {
+      setError("VITE_API_BASE_URL is not configured. Set it and restart the frontend server.");
+      setStatus("failed");
+      return;
+    }
     if (parsedEntries.length === 0) {
       setError("Enter at least one node entry before submitting.");
+      setStatus("failed");
       return;
     }
     setIsLoading(true);
+    setStatus("submitting");
     try {
-      const endpoint = `${apiBaseUrl}/bfhl`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -81,14 +91,18 @@ export default function App() {
         },
         body: JSON.stringify({ data: parsedEntries })
       });
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
       if (!res.ok) {
         setError(data?.error || "API request failed.");
+        setStatus("failed");
         return;
       }
       setResponse(data as ApiResponse);
+      setStatus("success");
     } catch (_err) {
       setError("Could not reach API. Verify the backend URL and CORS settings.");
+      setStatus("failed");
     } finally {
       setIsLoading(false);
     }
@@ -98,8 +112,26 @@ export default function App() {
     <main className="page">
       <header className="header">
         <h1>SRM BFHL Analyzer</h1>
-        <p>Submit node relationships and inspect hierarchies, cycles, and summary metrics.</p>
+        <p>Submit node relationships and inspect trees, cycles, duplicates, invalid entries, and summary metrics.</p>
       </header>
+
+      <section className="panel top-grid">
+        <div className="status-card">
+          <h2>Request Status</h2>
+          <p className={`status-pill status-${status}`}>
+            {status === "idle" ? "Idle" : null}
+            {status === "submitting" ? "Submitting request..." : null}
+            {status === "success" ? "Success" : null}
+            {status === "failed" ? "Failed" : null}
+          </p>
+          <p className="muted">Endpoint: {endpoint}</p>
+        </div>
+        <div className="status-card">
+          <h2>Input Snapshot</h2>
+          <p>{parsedEntries.length} entries ready for submission</p>
+          <p className="muted">Accepted format: X-&gt;Y (uppercase single-letter nodes)</p>
+        </div>
+      </section>
 
       <section className="panel">
         <form onSubmit={handleSubmit} className="form">
@@ -111,6 +143,11 @@ export default function App() {
             rows={12}
             placeholder="A->B, A->C, B->D"
           />
+          <div className="helper-list">
+            <p>Use comma or newline separated entries.</p>
+            <p>Example: A-&gt;B, A-&gt;C, B-&gt;D</p>
+            <p>Invalid examples: A-B, 1-&gt;2, A-&gt;A</p>
+          </div>
           <div className="form-foot">
             <span>{parsedEntries.length} entries</span>
             <button type="submit" disabled={isLoading}>
@@ -124,24 +161,6 @@ export default function App() {
 
       {response ? (
         <section className="results">
-          <article className="panel identity">
-            <h2>Identity</h2>
-            <div className="kv-grid">
-              <div>
-                <strong>user_id</strong>
-                <span>{response.user_id}</span>
-              </div>
-              <div>
-                <strong>email_id</strong>
-                <span>{response.email_id}</span>
-              </div>
-              <div>
-                <strong>college_roll_number</strong>
-                <span>{response.college_roll_number}</span>
-              </div>
-            </div>
-          </article>
-
           <article className="panel">
             <h2>Summary</h2>
             <div className="summary-grid">
@@ -156,6 +175,24 @@ export default function App() {
               <div>
                 <strong>Largest Tree Root</strong>
                 <span>{response.summary.largest_tree_root || "-"}</span>
+              </div>
+            </div>
+          </article>
+
+          <article className="panel identity">
+            <h2>Identity</h2>
+            <div className="kv-grid">
+              <div>
+                <strong>user_id</strong>
+                <span>{response.user_id}</span>
+              </div>
+              <div>
+                <strong>email_id</strong>
+                <span>{response.email_id}</span>
+              </div>
+              <div>
+                <strong>college_roll_number</strong>
+                <span>{response.college_roll_number}</span>
               </div>
             </div>
           </article>
