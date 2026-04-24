@@ -1,0 +1,27 @@
+{
+  "name": "bajaj-srm-full-stack",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Use backend/frontend test scripts\""
+  },
+  "keywords": [
+    "srm",
+    "full-stack",
+    "bajaj",
+    "express",
+    "react",
+    "vite"
+  ],
+  "author": {
+    "name": "Karthikeya Akhandam",
+    "email": "abkarthikeya2005@gmail.com"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "SRM Full Stack Engineering Challenge workspace",
+  "engines": {
+    "node": ">=20"
+  }
+}
