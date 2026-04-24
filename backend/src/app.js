@@ -18,7 +18,12 @@ export const validateIdentity = () => {
 };
 
 export const app = express();
-app.use(cors());
+const corsOrigin = process.env.CORS_ORIGIN?.trim();
+app.use(
+  cors({
+    origin: corsOrigin && corsOrigin.length > 0 ? corsOrigin : true
+  })
+);
 app.use(express.json({ limit: "100kb" }));
 
 app.get("/health", (_req, res) => {
